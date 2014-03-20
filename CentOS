@@ -1,0 +1,392 @@
+Installing and Configuring CentOS 6.x as ESXi 5.5 Guest
+Posted on January 6, 2014 by cgerow
+GREEN = Typed commands followed by pressing ENTER
+BLUE = Screen Output or File Contents
+
+These are the notes I took while recently installing a test CentOS 6.5 system on an ESXi 5.5 server.
+
+Specifications
+
+CentOS 6.5 x64 Using Minimal ISO
+ESXi 5.5 Virtual Guest
+Base Server, No GUI, No SELINUX, No Firewall, VMware Tools, Default Prompt, Time Zone and NTP, Root’s Mail Destination…
+– USE THE GUEST CONSOLE –
+(Pop-out from vShere Client Screen)
+
+INSTALL BASE SYSTEM
+Boot the system using the CentOS CD/DVD
+Skip the media check (already verified)
+Click Next
+Select Language, Click Next
+Select Keyboard, Click Next
+Select Basic Storage Devices, Click Next
+Click Yes, discard any data when prompted with “Storage Device Warning”
+Set Hostname and Domain (myserver.mysite.myextnsion), Click Next
+Set Time Zone, Click Next
+Set Root Password, Click Next
+If prompted with “Weak Password” you can…
+– Choose Cancel and change the password, Click Next
+– Choose Use Anyway
+Select Use All Space and Click Next
+Click Next
+Click Write changes to disk
+WAIT…
+When prompted, Click Reboot
+– STILL USING THE GUEST CONSOLE –
+
+CONFIGURE ETHERNET ADAPTER WITH DHCP IP ADDRESS
+(If you need a static address, skip to the next section)
+Login as root
+Type: vi /etc/sysconfig/network-scripts/ifcfg-eth0
+Type: i
+(the letter i, this puts in in insert mode)
+Use the following for reference… 
+DO NOT ALTER the DEVICE, HWADDR, TYPE, or UUID Lines 
+in YOUR FILE!!!
+DEVICE=eth0
+HWADDR=00:0C:29:AE:D5:B3
+TYPE=Ethernet
+UUID=ece1866c-08e7-4a38-a1d3-1726de2907b0
+ONBOOT=yes
+NM_CONTROLLED=yes
+BOOTPROTO=dhcp
+When finished editing, press the [ESC] key
+Type: :wq
+(colon, the letter w, the letter q)
+Press [ENTER]
+Type: service network start
+Verify a DHCP address was assigned by typing: ifconfig eth0
+Look at the inet addr entry
+Try pinging a known good IP (like your core switch/router)
+CONFIGURE ETHERNET ADAPTER WITH A STATIC IP ADDRESS
+Login as root
+Type: vi /etc/sysconfig/network-scripts/ifcfg-eth0
+Type: i
+(the letter i, this puts in in insert mode)
+Use the following for reference… 
+DO NOT ALTER the DEVICE, HWADDR, TYPE, or UUID Lines 
+in YOUR FILE!!!
+DEVICE=eth0
+HWADDR=00:0C:29:AE:D5:B3
+TYPE=Ethernet
+UUID=ece1866c-08e7-4a38-a1d3-1726de2907b0
+ONBOOT=yes
+NM_CONTROLLED=yes
+BOOTPROTO=static
+IPADDR=192.168.1.2
+PREFIX=24
+GATEWAY=192.168.1.1
+DNS1=192.168.80.10
+DNS2=192.168.80.11
+DOMAIN=mynet.local
+IPV6INIT=no
+When finished editing, press the [ESC] key
+Type: :wq
+(colon, the letter w, the letter q)
+Press [ENTER]
+Type: service network start
+Verify a STATIC address was assigned by typing: ifconfig eth0
+Look at the inet addr entry
+Try pinging a known good IP (like your core switch/router)
+– STILL USING THE GUEST CONSOLE –
+
+DISABLE SELINUX
+!!! WARNING THIS IS A SECURITY RISK !!!
+This is for demonstration purposes only. NEVER… ABSOLUTELY NEVER… disable SELINUX on a server that will be directly accessible from the Internet!
+Login as root
+Type: vi /etc/selinux/config
+Type: i
+(the letter i, this puts in in insert mode)
+Use the following for reference…
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of these two values:
+#     targeted - Targeted processes are protected,
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+After change the SELINUX= line to disabled, press [ESC]
+Type: :wq
+(colon, the letter w, the letter q)
+Press [ENTER]
+Reboot the server by typing: shutdown -r now
+– STILL USING THE GUEST CONSOLE –
+
+DISABLE THE FIREWALL
+!!! WARNING THIS IS A SECURITY RISK !!!
+This is for demonstration purposes only. NEVER… ABSOLUTELY NEVER… disable the FIREWALL on a server that will be directly accessible from the Internet!
+Login as root
+Type: chkconfig iptables off
+Type: chkconfig ip6tables off
+Reboot the server by typing: shutdown -r now
+– STILL USING THE GUEST CONSOLE –
+
+UPDATE/UPGRADE TO THE LATEST SOFTWARE
+Login as root
+Type: yum upgrade
+When prompted to allow the download, type: y
+(the letter y)
+Just to be sure the update/upgrade is complete, reboot the server by typing: shutdown -r now
+– STILL USING THE GUEST CONSOLE –
+(you could also do this from SSH if you like)
+
+INSTALL ADDITIONAL SOFTWARE *Optional*
+Login as root
+Type: yum install man
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: yum install openssh-clients
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: yum install perl
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: yum install gcc
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: yum install wget
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+In case we need it later (maybe nagios), type:
+yum install net-snmp net-snmp-devel net-snmp-libs net-snmp-utils
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+In case we need it later, type: yum install bind-utils
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+In case we need it later, type: yum install telnet
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+In case we need it later, type: yum install mailx mailcap
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: yum install mlocate
+When prompted to allow the download along with dependencies, type: y
+(the letter y)
+Type: updatedb
+– STILL USING THE GUEST CONSOLE –
+*** Required for Vmware Tools to Work! ***
+
+INSTALL VMWARE TOOLS
+Login to the guest as root
+Click the VM menu (Press [CTRL] and [ALT] to get your cursor back)
+Click Guest
+Click Install/Upgrade VMware Tools
+Back at the root prompt, type: mkdir /mnt/cdrom
+Type: mount /dev/cdrom /mnt/cdrom
+* NOTE: if this is not a new server and you are upgrading tools, be sure to delete any old copies of /tmp/vmware-tools-distrib before proceeding *
+Type: cd /tmp
+Type: tar zxpf /mnt/cdrom/VMwareTools-x.x.x-yyyy.tar.gz
+(where the x.x.x-yyyy is the version of Vmware Tools you are installing)
+Type: umount /dev/cdrom
+(leave the /mnt/cdrom folder… you might want it later)
+Type: /tmp/vmware-tools-distrib/vmware-install.pl
+Unless you really know what you are doing… 
+ACCEPT the defaults for EVERYTHING… just keep pressing [ENTER]!
+This will also kick off /usr/bin/vmware-config-tools.pl for you!
+Again, just press [ENTER] until it finishes)
+Reboot the server by typing: shutdown -r now
+Once it reboots, and if you did everything correctly, you should see General status information appear in the guest’s Summary tab.
+– SSH LOGIN –… we can use it now.
+
+CHANGE THE DEFAULT PROMPT (System Wide)
+* NOTE: Remember that the letter i for Insert mode, [ESC] to go back to command mode, and :wq to Write and Quit the file. *
+* NOTE: If you ever want to quit without making changes, type: :q!
+(colon, the letter q, the exclamation point [or bang as it is sometimes called])
+Login as root
+Type: vi /etc/profile
+Look for the following:
+if [ -x /usr/bin/id ]; then
+    if [ -z "$EUID" ]; then
+        # ksh workaround
+        EUID=`id -u`
+        UID=`id -ru`
+    fi
+    USER="`id -un`"
+    LOGNAME=$USER
+    MAIL="/var/spool/mail/$USER"
+fi
+After the USER line, add UNAME=”`id -gn`” so it looks like:
+if [ -x /usr/bin/id ]; then
+    if [ -z "$EUID" ]; then
+        # ksh workaround
+        EUID=`id -u`
+        UID=`id -ru`
+    fi
+    USER="`id -un`"
+    UNAME="`id -gn`"
+    LOGNAME=$USER
+    MAIL="/var/spool/mail/$USER"
+fi
+After editing, press [ESC]
+Type: :w
+(the colon, the letter w)
+Continuing in /etc/profile, look for the following:
+unset i
+unset pathmunge
+Insert the following text BEFORE the two unset lines so it looks like:
+# Setting the default prompt
+PS1='\n$UNAME@`hostname -s` | \d @ \t \n$PWD> '
+
+echo
+echo -----------------------------------------------------------
+echo See who else is logged in to the server
+who
+echo
+echo See your tty
+who am i
+echo -----------------------------------------------------------
+echo
+
+unset i
+unset pathmunge
+After editing, press [ESC]
+Type: :wq
+(the colon, the letter w, the letter q)
+To test, open a NEW (do not close the current) SSH session to see if the settings worked.
+The new login sequence should look something like (from a Mac):
+MYWORKSTATION$ ssh root@10.108.10.10
+root@192.168.1.2's password: 
+Last login: Mon Jan 01 00:00:00 2014 from 192.168.1.200
+
+-----------------------------------------------------------
+See who else is logged in to the server
+root     pts/0        2014-01-01 00:00 (192.168.1.200)
+root     pts/1        2014-01-01 00:00 (192.168.1.200)
+
+See your tty
+root     pts/1        2014-01-01 00:00 (192.168.1.200)
+-----------------------------------------------------------
+
+
+root@192.168.1.2 | Mon Jan 01 @ 00:00:00 
+/root>
+The first section shows who is currently logged in to the server and only comes up on initial login
+The second section is a two line command prompt that always shows:
+user@server | [Day] [Mon] [Date] @ [HH:MM:SS]
+[Current Path]>
+
+– SSH LOGIN –
+We can use this from here on out!
+
+SET YOUR TIME ZONE
+Login as root
+Type: mv /etc/localtime /etc/localtime.bu
+Type: ln -s /usr/share/zoneinfo/America/New_York /etc/localtime
+
+(Change to match your time zone)
+To verify, type ls -la /etc/local*
+Your output should look similar to the following:
+
+lrwxrwxrwx  1 root root   36 Jan 01 00:00 localtime -> /usr/share/zoneinfo/America/New_York
+-rw-r--r--. 1 root root 3519 Jan 01 00:00 localtime.bu
+CONFIGURE TIME AND NTP (Client and Server)
+* NOTE: Remember that the letter i for Insert mode, [ESC] to go back to command mode, and :wq to Write and Quit the file. *
+* NOTE: If you ever want to quit without making changes, type: :q!
+(colon, the letter q, the exclamation point [or bang as it is sometimes called])
+Login as root
+Type: yum -y install ntp ntpdate
+Type: ntpdate 129.6.15.28
+(129.6.15.28 is time-a.nist.gov, use a location appropriate time server)
+Type: vi /etc/ntp.conf
+If you want to make this a server, add something similar to the following:
+# Allow ALL hosts from ANY private (not Internet routable) IP Subnet
+restrict 192.168.0.0 mask 255.255.0.0 nomodify notrap
+restrict 10.0.0.0 mask 255.0.0.0 nomodify notrap
+Add location appropriate time servers to the configuration file:
+# Use public servers from the pool.ntp.org project.
+# Please consider joining the pool (http://www.pool.ntp.org/join.html).
+# time-a.nist.gov
+server 129.6.15.28
+# time-b.nist.gov
+server 129.6.15.29
+# server 0.centos.pool.ntp.org iburst
+# server 1.centos.pool.ntp.org iburst
+# server 2.centos.pool.ntp.org iburst
+# server 3.centos.pool.ntp.org iburst
+* NOTE: You can also remark out CentOS time server lines if you want. *
+
+After editing, press [ESC]
+Type: :wq
+(the colon, the letter w, the letter q)
+Type: chkconfig ntpd on
+Type: service ntpd start
+Verify time is synchronized by typing: ntpstat
+Your input/output should be similar to the following:
+[root@myserver ~]# ntpstat
+synchronised to NTP server (129.6.15.28) at stratum 2 
+   time correct to within 103 ms
+   polling server every 64 s
+CONFIGURE ROOT’S MAIL DESTINATION
+* NOTE: Remember that the letter i for Insert mode, [ESC] to go back to command mode, and :wq to Write and Quit the file. *
+* NOTE: If you ever want to quit without making changes, type: :q!
+(colon, the letter q, the exclamation point [or bang as it is sometimes called])
+Login as root
+Type: vi /etc/aliases
+Scroll down (or press [CTRL] and [F]) until you see something like:
+# Person who should get root's mail
+#root:          marc
+Add a new line directly under #root so the file looks something like:
+# Person who should get root's mail
+#root:          marc
+root:		myemail@mydomain.com
+After editing, press [ESC]
+Type: :wq
+(the colon, the letter w, the letter q)
+To enable the changes, type: newaliases
+Send a test message by typing the following:
+/bin/mail -s "Test Message" "myemail@mydomain.com" < /etc/sysconfig/network-scripts/ifcfg-eth0
+CONFIGURE AUTOMATIC UPDATES FOR THE SERVER
+THIS IS A SPECIAL MODE OF VI… BE CAREFUL… 
+TYPING SOMETHING WRONG COULD ERASE YOUR CRON!!!
+* NOTE: Remark lines start with a # symbol and are ignored by cron. *
+* NOTE: Remember that the letter i for Insert mode, [ESC] to go back to command mode, and :wq to Write and Quit the file. *
+* NOTE: If you ever want to quit without making changes, type: :q!
+(colon, the letter q, the exclamation point [or bang as it is sometimes called])
+Login as root
+Type: crontab -e
+Insert the following:
+# ##########################################
+# Automatic Updates
+# 12 noon, every Sunday
+# The -y means YES to EVERYTHING!
+# ##########################################
+0 12 * * 0 yum -y update
+After editing, press [ESC]
+Type: :wq
+(the colon, the letter w, the letter q)
+To verify your settings were accepted, type: crontab -l
+(lower case L at the end)
+In general, the syntax for cron is as follows:
+#        crontab [-u user] [ -e | -l | -r ]
+#                (default operation is replace, per 1003.2)
+#       -e       (edit user's crontab)
+#       -l       (list user's crontab)
+#       -r       (delete user's crontab)
+#       -i       (prompt before deleting user's crontab)
+#       -s       (selinux context)
+#
+# * * * * * Command
+# | | | | |
+# | | | | +--------- Day of the Week, 0 - 6, 0=Sunday
+# | | | +----------- Month, 1 - 12
+# | | +------------- Day of the Month, 1 - 31, Only if valid date
+# | +--------------- Hour, 0 - 23
+# +----------------- Minute, 0 - 59
+#
+# Repeat pattern like */2 for every 2 minutes or */10 for every 10 minutes. 
+# This is not supported by all operating systems.
+#
+# Use multiple values in a field by separating them with commas.  In the 
+# month field use 1,6,12 to run a job every January, June, and December.
+#
+# Use multiple values in a field by separating them with a dash.  In the
+# Day of the Week field use 1-5 to run a job only during week days.
+#
+# The specification of days can be made in two fields: month day and 
+# weekday.  If both are specified in an entry, they are cumulative meaning 
+# both of the entries will get executed.
+That is it for now… you should have a fully operational (though maybe not so secure) guest CentOS 6.5 installation.
